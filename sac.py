@@ -281,7 +281,7 @@ def main():
                 print("action is NaN. 学習失敗.")
                 break
             # print("state:", state, "action:", action)
-    
+
             n_state, reward, terminated, truncated, _ = env.step(env_action)
             n_state = np.asarray(n_state)
             step += 1
@@ -364,6 +364,8 @@ def main():
     return policy_model, q_model
 
 # テスト --5回パフォーマンス測定
+
+
 def test(policy_model):
     env = gym.make('Pendulum-v1', render_mode='human')
     for episode in range(5):
