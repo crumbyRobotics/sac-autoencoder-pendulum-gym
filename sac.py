@@ -64,7 +64,7 @@ class PolicyModel(keras.Model):
     # 学習以外で使う箇所(1アクションを返す)
     def sample_action(self, states, training=False):
         action, mean, stddev, action_org = self.sample_actions(states.reshape(1, -1), training)
-        print("sample_action:", action.numpy(), mean.numpy(), stddev.numpy(), action_org.numpy())
+        # print("sample_action:", action.numpy(), mean.numpy(), stddev.numpy(), action_org.numpy())
         action = action.numpy()[0]
 
         # 環境に渡すためにアクションを規格化
@@ -265,9 +265,8 @@ def main():
     history_metrics_y = []
 
     # 学習ループ
-    for episode in range(5):
+    for episode in range(500):
         state, _ = env.reset()
-        print("episode", episode, "init=", state)
         done = False
         total_reward = 0
         step = 0
@@ -279,10 +278,10 @@ def main():
             # アクションを決定
             env_action, action = policy_model.sample_action(state, True)
             if isnan(env_action[0]):
-                print("action is NaN.")
+                print("action is NaN. 学習失敗.")
                 break
-            print("state:", state, "action:", action)
-            # step
+            # print("state:", state, "action:", action)
+    
             n_state, reward, terminated, truncated, _ = env.step(env_action)
             n_state = np.asarray(n_state)
             step += 1
@@ -301,7 +300,7 @@ def main():
             # train_interval毎に, warmup貯まっていたら学習する
             if len(experiences) >= warmup_size and all_step_count % train_interval == 0:
                 # モデルの更新
-                update_model(
+                metrics = update_model(
                     policy_model,
                     q_model,
                     target_q_model,
@@ -315,6 +314,7 @@ def main():
                     all_train_count,
                 )
                 all_train_count += 1
+                metrics_list.append(metrics)
             all_step_count += 1
 
         # 報酬
@@ -335,6 +335,8 @@ def main():
                 max(history_rewards[-interval:]),
                 tf.math.exp(log_alpha).numpy(),
             ))
+
+    env.close()
 
     # プロット
     plt.plot(history_rewards, label="reward")
@@ -359,7 +361,11 @@ def main():
     # plt.savefig('cartpole2.png') # 画像の保存
     plt.show()
 
-    # テスト --5回パフォーマンス測定
+    return policy_model, q_model
+
+# テスト --5回パフォーマンス測定
+def test(policy_model):
+    env = gym.make('Pendulum-v1', render_mode='human')
     for episode in range(5):
         state, _ = env.reset()
         env.render()
@@ -369,9 +375,7 @@ def main():
 
         # １エピソード
         while not done:
-            print("step:", step, state)
             action = policy_model.sample_action(state)
-            print(action)
             n_state, reward, terminated, truncated, _ = env.step(action)
             env.render()
             state = n_state
@@ -384,4 +388,5 @@ def main():
     env.close()
 
 
-main()
+policy_model, _ = main()
+test(policy_model)
